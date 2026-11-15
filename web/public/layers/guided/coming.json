@@ -1,5 +1,5 @@
 {
- "what": "The numbers of the tour's last step (Would we have seen it coming?). Edit them here, no code: the page reads this file as it is. An option whose status is \"arriving\" shows a quiet arriving state instead of numbers.",
+ "what": "The numbers of the tour's last step (Where the map said safe): the streets outside every official flood zone. Edit them here, no code: the page reads this file as it is. The older options (the three rains) are kept for the record and no longer shown.",
  "options": [
   {
    "key": "real",
@@ -46,5 +46,15 @@
   ],
   "source": "data/streets/results.json streets_more_runs.main.ceiling.key_b_against_key_a.total: the UPV depth map against key A (Copernicus EMS map and water marks), 84.2% found and 78.9% really flooded, inside the UPV outlines (PR #50)"
  },
- "closing": "Open code, every test written down before the answer was seen."
+ "closing": "Open code, every test written down before the answer was seen.",
+ "safe": {
+  "found_km": 205.41,
+  "outside_km": 303.07,
+  "precision_pct": 70.6,
+  "chance_pct": 23.1,
+  "run_minutes": 30,
+  "line": "of flooded streets outside every official zone that our model found, two thirds of all the streets the map left out.",
+  "small": "It needs only rain and terrain, and runs a 25-hour storm in about half an hour.",
+  "source": "data/streets/results.json streets.main.descriptive: simulated_outside_zones.A.total (flagged_and_flooded_km 205.41, precision_pct 70.6), key_a_flooded_km_outside_every_zone 303.07 (205.41 of 303.07 is 67.8%, two thirds), outside_zones_chance_precision.A 23.1; half an hour: streets_more_runs simulation_runs, 25-hour runs of 1,818 s and 1,925 s (ifs_20241029T00, ifs_20241029T06)"
+ }
 }

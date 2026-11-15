@@ -1,20 +1,20 @@
-"""Record the pitch film (30 s at most): the app itself, beat by beat, every click shown, frame by frame on the page's
-own clock, so every frame is drawn and evenly spaced however busy the computer is.
+"""Record the pitch film (about 41 s, for the local demo): the app itself, beat by beat, every click shown, frame by
+frame on the page's own clock, so every frame is drawn and evenly spaced however busy the computer is.
 
     python web/scripts/pitch_film.py OUT.mp4 --url http://localhost:3251            the film (1920 x 1080, 30 a second)
     python web/scripts/pitch_film.py OUT_DIR --url http://localhost:3251 --dry      a dry run: no film, one frame per beat
 
 Needs Playwright (the system Python 3.12 has it) and ffmpeg on the path, and a running production build of the app.
-The beats are the plan approved on 15 Nov 2026 (about 4 s each):
+The beats are the plan approved on 15 Nov 2026 (the landing as short as before, the rest given time to read):
 
   1  0.0 to 3.5    the landing: the name and the hook, a click on "See what the map missed"
-  2  3.5 to 8.0    the streets step on the official map: the flooded streets appear, 59% outside every zone
-  3  8.0 to 11.5   a click on "Our simulation": 76%
-  4  11.5 to 16.0  in on Carrer del Sol, Picanya, a tap: its card with every record and the sources
-  5  16.0 to 20.0  Next, NISAR: the line dragged across once, 57% against 36%
-  6  20.0 to 26.5  Next, would we have seen it coming: the real rain 76%, the same morning 21%, the night before 26%
-  7  26.5 to 27.5  All layers, about a second
-  8  27.5 to 29.0  back on the landing's name (recorded as its own take and joined)
+  2  3.5 to 10.0   the streets step on the official map: the flooded streets appear, 59% outside every zone
+  3  10.0 to 15.0  a click on "Our simulation": 76%
+  4  15.0 to 22.0  in on Carrer del Sol, Picanya, a tap: its card with every record and the sources
+  5  22.0 to 28.0  Next, NISAR: the line dragged across once, 57% against 36%
+  6  28.0 to 37.0  Next, where the map said safe: 205 km found outside every official zone, 71% right, chance 23%
+  7  37.0 to 39.0  All layers
+  8  39.0 to 41.0  back on the landing's name (recorded as its own take and joined)
 
 Clicks are real mouse input (DevTools Input.dispatchMouseEvent) at the cursor; the cursor and a soft ring for each
 click are drawn onto the frames afterwards, so nothing is added to the page. The page's clocks follow the recorder
@@ -158,7 +158,7 @@ class Film:
         self.n += 1
         if self.dry:
             return
-        shot = self.cdp.send("Page.captureScreenshot", {"format": "png"})
+        shot = self.cdp.send("Page.captureScreenshot", {"format": "jpeg", "quality": 96})
         im = Image.open(io.BytesIO(base64.b64decode(shot["data"]))).convert("RGB")
         self.draw(im).save(self.raw / f"{self.n:06d}.jpg", quality=94)
 
@@ -306,48 +306,43 @@ def main() -> int:
             page.wait_for_timeout(15)
         film.hold(3.5 - film.n / fps)
 
-        # 2  the official map: the streets appear, 59% (4.5 s)
-        film.hold(4.5)
+        # 2  the official map: the streets appear, 59% (6.5 s)
+        film.hold(6.5)
         mark("2_official")
 
-        # 3  our simulation: 76% (3.5 s)
+        # 3  our simulation: 76% (5 s)
         film.move(("button", [".gd-seg", "Our simulation"]), 0.9)
         film.click()
-        film.hold(2.5)
+        film.hold(4.07)
         mark("3_simulation")
 
-        # 4  in on Carrer del Sol, a tap: its card (4.5 s)
+        # 4  in on Carrer del Sol, a tap: its card (7 s)
         film.js("([c, z]) => window.__guided.map().flyTo({ center: c, zoom: z, duration: 1400, essential: true })", [list(STREET), STREET_ZOOM])
-        film.hold(1.5)
-        film.move(("street", list(STREET)), 0.7)
+        film.hold(1.6)
+        film.move(("street", list(STREET)), 0.8)
         film.click()
-        film.hold(2.2)
+        film.hold(4.57)
         mark("4_card")
 
-        # 5  Next, NISAR: the line dragged across once, 57% against 36% (4 s)
-        film.move(("button", [".gd-nav", "Next"]), 0.5)
+        # 5  Next, NISAR: the line dragged across once, 57% against 36% (6 s)
+        film.move(("button", [".gd-nav", "Next"]), 0.6)
         film.click()
-        film.hold(1.7)
-        film.move(("css", ".gd-swipe-knob"), 0.4)
+        film.hold(1.9)
+        film.move(("css", ".gd-swipe-knob"), 0.5)
         knob = film.where(("css", ".gd-swipe-knob"))
-        film.drag((knob[0] - W * 0.16, knob[1]), 0.7)
-        film.drag((knob[0] + W * 0.06, knob[1]), 0.6)
+        film.drag((knob[0] - W * 0.16, knob[1]), 0.9)
+        film.drag((knob[0] + W * 0.06, knob[1]), 0.8)
+        film.hold(1.27)
         mark("5_nisar")
 
-        # 6  would we have seen it coming: the real rain, the same morning, the night before (6.5 s)
-        film.move(("button", [".gd-nav", "Next"]), 0.4)
+        # 6  where the map said safe: 205 km found outside every official zone, 71% right, chance 23% (9 s)
+        film.move(("button", [".gd-nav", "Next"]), 0.5)
         film.click()
-        film.hold(1.4)
-        film.move(("button", [".gd-seg", "The same morning"]), 0.5)
-        film.click()
-        film.hold(1.5)
-        film.move(("button", [".gd-seg", "The night before"]), 0.5)
-        film.click()
-        film.hold(1.6)
-        mark("6_coming")
+        film.hold(8.47)
+        mark("6_safe")
 
-        # 7  All layers, about a second
-        film.move(("button", [".gd-card", "All layers"]), 0.4)
+        # 7  All layers (2 s)
+        film.move(("button", [".gd-card", "All layers"]), 0.5)
         film.click()
         until = time.time() + 60
         while not page.evaluate(EXPLORE_OPEN):
@@ -355,14 +350,14 @@ def main() -> int:
                 raise RuntimeError("All layers did not open")
             page.evaluate(f"() => window.__clock.step({1000 / fps})")
             page.wait_for_timeout(15)
-        film.hold(0.9)
+        film.hold(1.47)
         mark("7_all_layers")
         main_frames, late = film.n, film.late
         ctx.close()
         browser.close()
 
         # 8  the landing's name, as its own take
-        n = take_landing_close(p, base, raw, fps, 1.5, args.dry, main_frames)
+        n = take_landing_close(p, base, raw, fps, 2.0, args.dry, main_frames)
         checks.append(("8_close", n))
 
     total = n / fps
@@ -370,8 +365,8 @@ def main() -> int:
           + (f"; {late} frames taken before everything was drawn" if late else ""))
     if errors:
         print("console errors:", *errors[:10], sep="\n  ")
-    if total > 30:
-        print("longer than 30 s: drop beat 7 first, then shorten beat 5 (the approved fallbacks)")
+    if total > 45:
+        print("longer than 45 s: shorten the holds of beats 4 and 6 first")
     if args.dry:
         print(f"dry run: no film; one frame per beat in {raw}")
         return 0

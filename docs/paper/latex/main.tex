@@ -1,8 +1,13 @@
 \documentclass[10pt,twocolumn]{article}
 \usepackage[a4paper,margin=1.8cm,columnsep=0.7cm]{geometry}
+\usepackage{iftex}
+\ifPDFTeX
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
+\else
+\usepackage{fontspec}
+\fi
 \usepackage{textcomp}
 \usepackage{amssymb}
 \usepackage{graphicx}
@@ -18,6 +23,7 @@
 \usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black,citecolor=blue!50!black]{hyperref}
 \usepackage{microtype}
 \setlist{nosep,leftmargin=1.2em}
+\renewcommand{\labelitemii}{$\circ$}
 \newcolumntype{L}{>{\raggedright\arraybackslash}X}
 \setlength{\parskip}{0.35em}
 \setlength{\parindent}{0pt}
@@ -34,7 +40,7 @@ A rain alert tells people how much rain will fall; it does not tell them which f
 \textbf{Keywords:} NISAR, L-band SAR, flood mapping, Sentinel-1, independent validation, pre-registration, LightGBM, Valencia, DANA
 
 \section{Introduction}
-\textbf{Opening: an alert without a map.} Two of the authors were Erasmus students in Valencia in autumn 2026 when the weather service issued yellow, orange and red rain warnings, and they could not tell what any of them meant for their own street. The region has reason to take such warnings seriously: the DANA of 29 October 2024 caused catastrophic flash floods in the province of Valencia, with 229 deaths and €17.8 billion of material damage [France 24 2025]. A rain warning answers ``how much rain, where, when'': in the Valencia warning zones, yellow, orange and red mean at least 60, 100 and 180 mm in 12 hours [AEMET Meteoalerta]. A phone alert can tell residents to stay away from flood-prone areas, but not which areas those are. Neither answers the question a resident actually has: ``will \emph{my} road, field or neighbourhood flood?'' The gap between a rain total and a flooded place is the subject of this paper. This first version covers rice fields and the marsh, where radar sees water well; in towns, where it does not, the map must mark streets as \emph{not assessed} rather than dry (Section 6.2).
+\textbf{Opening: an alert without a map.} Two of the authors were Erasmus students in Valencia in autumn 2026 when the weather service issued yellow, orange and red rain warnings, and they could not tell what any of them meant for their own street. The region has reason to take such warnings seriously: the DANA of 29 October 2024 caused catastrophic flash floods in the province of Valencia, with €17.8 billion of material damage [France 24 2025]. A rain warning answers ``how much rain, where, when'': in the Valencia warning zones, yellow, orange and red mean at least 60, 100 and 180 mm in 12 hours [AEMET Meteoalerta]. A phone alert can tell residents to stay away from flood-prone areas, but not which areas those are. Neither answers the question a resident actually has: ``will \emph{my} road, field or neighbourhood flood?'' The gap between a rain total and a flooded place is the subject of this paper. This first version covers rice fields and the marsh, where radar sees water well; in towns, where it does not, the map must mark streets as \emph{not assessed} rather than dry (Section 6.2).
 
 \textbf{The forecast is only half of the problem; the footprint is the other half.} Numerical weather prediction often sees large storms coming, but not steadily. In our replay of the October 2026 DANA, the ECMWF IFS 9 km run of 13 October put 158.2 / 69.2 mm of rain on 18 and 19 October at the wettest grid point over Pego-Oliva, five days ahead; the later runs gave 64.0 / 20.8 mm (14 October), 68.9 / 55.7 mm (15 October), 79.3 / 128.8 mm (16 October) and 41.2 / 21.3 mm (17 October), against 64.9 / 94.4 mm in the IFS archive for those days (\texttt{pipeline/\allowbreak{}prediction/\allowbreak{}flood/\allowbreak{}early\_\allowbreak{}runs.\allowbreak{}py}, \texttt{forecast.\allowbreak{}json}, \texttt{rain\_\allowbreak{}pego\_\allowbreak{}oliva.\allowbreak{}csv}; Section 5.5), and our rain trigger never reached red. Satellites cannot fix that: no radar predicts rain. And even a perfect rain forecast leaves open where the water goes. What is missing is a link from rain to flooded ground, which depends on terrain, drainage, land cover and how wet the soil already is. Hydraulic models provide that link where they have been built and calibrated, but they need river geometry, defences and inflow data that many small Mediterranean catchments do not have.
 

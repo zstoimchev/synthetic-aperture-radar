@@ -42,10 +42,6 @@ export function Hero() {
 				</p>
 				<div className="hx-toll" data-a>
 					<p>
-						<b className="display">{TOLL.lives_lost}</b>
-						<span>{HERO.toll.lives}</span>
-					</p>
-					<p>
 						<b className="display">€{TOLL.damage_eur_billion} billion</b>
 						<span>{HERO.toll.damage}</span>
 					</p>
@@ -71,6 +67,9 @@ export function Hero() {
 					<AnchorLink to="more" className="btn-ghost">
 						{HERO.stories}
 					</AnchorLink>
+					<a href={SITE.paper} className="btn-ghost" target="_blank" rel="noopener noreferrer">
+						{HERO.paper}
+					</a>
 				</div>
 			</div>
 			<MonitorStage films={FILMS} />

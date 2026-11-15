@@ -17,8 +17,8 @@ pnpm build && pnpm start
 `/explore` is a guided map of three steps after the landing (step 1), one main action each: the streets step (it
 opens on the official map, "the official map said safe", and one switch shows our simulation's streets, "our
 simulation saw it"; any street tapped shows what each record says there), NISAR sees more water (swipe against
-Sentinel-1, open water on both sides), would we have seen it coming (one switch: the street simulation with the real
-rain, the forecast of the same morning or of the night before). `/explore?step=2` to `4` opens a step,
+Sentinel-1, open water on both sides), where the map said safe (the streets outside every official zone: what our model found there and how often its
+warnings there were right). `/explore?step=2` to `4` opens a step,
 `/explore?all` the free explorer with every layer, and from there `/explore?screen=exam` and `?screen=rain` the marsh
 model's test and rain outline. Code: `src/components/guided/`, copy: `src/content/guided.ts`. Every number is read at
 run time from a baked or hand-kept file:

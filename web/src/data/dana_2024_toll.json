@@ -1,13 +1,12 @@
 {
- "what": "The toll of the Valencia flood (DANA) of 29 Oct 2024, as the landing shows it",
+ "what": "The damage of the Valencia flood (DANA) of 29 Oct 2024, as the landing shows it",
  "date": "29 Oct 2024",
- "lives_lost": 229,
  "damage_eur_billion": 17.8,
  "sources": [
   {
    "name": "France 24",
    "url": "https://acento.com.do/france24/en-cifras-229-muertos-y-17-800-millones-de-euros-en-perdidas-a-un-ano-de-la-dana-9570289.html",
-   "note": "France 24 report republished by Acento, one year after the DANA: 229 deaths and 17,800 million euros of losses"
+   "note": "France 24 report republished by Acento, one year after the DANA: 17,800 million euros of losses"
   },
   {
    "name": "Valencia Plaza",

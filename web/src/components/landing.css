@@ -113,7 +113,7 @@ p.hx-hook {
 	text-transform: uppercase;
 	color: rgb(255 255 255 / 0.82);
 }
-/* the toll of the 2024 flood: two numbers, white on the panel */
+/* the cost of the 2024 flood: the damage, white on the panel */
 .hx-toll {
 	display: flex;
 	flex-wrap: wrap;

@@ -10,10 +10,12 @@ export const HERO = {
 	tagline: 'Where the water really went',
 	small: 'NASA Space Apps 2026 · Dancing with the SARs',
 	lines: ['The alert says rain.', 'Not where the water goes.'],
-	/** the two numbers come from src/data/dana_2024_toll.json, with their sources */
-	toll: { lives: 'lives lost', damage: 'of damage', caption: 'Valencia flood' },
+	/** the damage figure comes from src/data/dana_2024_toll.json, with its sources */
+	toll: { damage: 'of damage', caption: 'Valencia flood' },
 	primary: { label: 'See what the map missed', href: '/explore' },
 	stories: 'More NISAR stories',
+	/** the third button: the research paper (its link lives in SITE.paper) */
+	paper: 'Research paper',
 }
 
 /** The one film of the monitor: the guided tour's streets step as it runs (/explore?film), recorded frame by frame

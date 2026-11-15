@@ -7,8 +7,8 @@
 //   2  The official map said safe /    the streets that flooded in 2024 over the official zones, then one switch to the
 //      Our simulation saw it           streets our simulation flags; any street tapped shows what each record says
 //   3  NISAR sees more water           drag the line between Sentinel-1 and NISAR of the same evening, open water
-//   4  Would we have seen it coming?   one switch: the street simulation with the real rain, the forecast of the same
-//                                      morning or the forecast of the night before
+//   4  Where the map said safe         the streets outside every official zone, over the zones: what our model found
+//                                      there, how often its warnings there were right, against chance
 //
 // Out of the flow, opened from "All layers" (?screen=exam, ?screen=rain): the marsh model's test against EMSR935 (drag
 // the line between our prediction and what happened) and its rain slider (one outline).
@@ -115,7 +115,9 @@ type ComingOption = {
 	line: string
 	source: string
 }
-type ComingDoc = { options: ComingOption[]; ceiling: { text: string; pair: number[]; source: string }; closing: string }
+/** the last step: the streets outside every official zone (coming.json "safe", from data/streets/results.json) */
+type SafeDoc = { found_km: number; outside_km: number; precision_pct: number; chance_pct: number; run_minutes: number; line: string; small: string; source: string }
+type ComingDoc = { options: ComingOption[]; ceiling: { text: string; pair: number[]; source: string }; closing: string; safe?: SafeDoc }
 
 /** a tapped street: what each record says there (streets_2024.json, the water marks of streets.json) */
 type Pick = {
@@ -151,7 +153,7 @@ const BIN_LAYERS = Array.from({ length: BINS }, (_, i) => binLayer(i))
 const STEP_LAYERS: Record<StepKey, string[]> = {
 	streets: [],
 	nisar: [],
-	coming: ['g-s3-missed', 'g-s3-dry', 'g-s3-found'],
+	coming: ['g-zones-fill', 'g-s3-missed', 'g-s3-dry', 'g-s3-found'],
 	exam: [],
 	rain: ['g-rain-fill', 'g-rain-line'],
 }
@@ -164,6 +166,8 @@ const FLOODED = ['==', ['coalesce', ['get', 'f'], 0], 1]
 const flagged = (prop: string) => ['>', ['coalesce', ['get', prop], 0], 0]
 /** a filter that keeps nothing (a bare ['==', 1, 0] reads as the old filter syntax and is refused) */
 const NOTHING = ['literal', false]
+/** a street piece outside every official flood zone */
+const OUTSIDE = ['==', ['coalesce', ['get', 'z'], 0], 0]
 /** the streets a method flags, green or red, and the flooded streets it missed, blue; with no method (its streets
  *  are still arriving), the flooded streets alone */
 const s3Filters = (prop: string | null) =>
@@ -247,6 +251,11 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 	const step = at.step
 	const [error, setError] = useState<string | null>(null)
 	const [sources, setSources] = useState(false)
+	// a phone: the card is a bottom sheet, open or lowered to its title row (peek); the choice holds across steps
+	const [peek, setPeek] = useState(false)
+	const titleRef = useRef<HTMLHeadingElement>(null)
+	const sheetDrag = useRef<{ y0: number; base: number; max: number; moved: boolean; last: number; lastT: number; vy: number } | null>(null)
+	const justDragged = useRef(false)
 
 	const [streets, setStreets] = useState<StreetsIndex | null>(null)
 	const [views, setViews] = useState<ViewsDoc | null>(null)
@@ -259,7 +268,6 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 	const [pick, setPick] = useState<Pick | null>(null)
 	const [methodKey, setMethod] = useState<string | null>(null)
 	const [rainIdx, setRainIdx] = useState(2)
-	const [rainKey, setRainKey] = useState<string | null>(null)
 
 	const s = at.extra ? SCREENS.find((x) => x.key === at.extra)! : STEPS[step]
 	const key = s.key
@@ -385,7 +393,7 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 		for (let i = 0; i < BINS; i++) {
 			map.addLayer({ id: binLayer(i), type: 'line', source: 'g-streets', filter: ['==', ['get', 'r'], i], layout: { ...hidden, 'line-cap': 'round', 'line-join': 'round' }, paint: street as never })
 		}
-		// step 3: the streets the chosen method flags, green where they flooded, red where they stayed dry, and the
+		// step 3: the streets the chosen method flags, green where they flooded, red where no official record shows water (the UPV street map mostly does), and the
 		// flooded streets it missed in blue
 		const line = { ...hidden, 'line-cap': 'round' as const, 'line-join': 'round' as const }
 		const first = s3Filters(streets.methods[0]?.prop ?? 'z')
@@ -430,7 +438,7 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 		const official = key === 'streets' && method?.key !== 'sim'
 		officialOn.current = official
 		const opacity: [string, string, number][] = [
-			['g-zones-fill', 'fill-opacity', official ? 0.13 : 0],
+			['g-zones-fill', 'fill-opacity', official ? 0.13 : key === 'coming' ? 0.1 : 0],
 			['g-zones-line', 'line-opacity', official ? 0.95 : 0],
 			['g-s3-missed', 'line-opacity', official ? 0 : 0.9],
 			['g-s3-dry', 'line-opacity', official ? 0 : 0.95],
@@ -441,16 +449,15 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 		if (revealDone.current) for (const id of BIN_LAYERS) map.setPaintProperty(id, 'line-opacity', official ? 1 : 0)
 	}, [map, ready, key, method, streets])
 
-	// the streets step: the chosen method's streets; the last step: the chosen rain's (none while still arriving)
-	const rains = coming?.options ?? []
-	const rainOpt = rains.find((o) => o.key === rainKey) ?? rains[0] ?? null
-	const rainProp = rainOpt && rainOpt.status === 'in' && streets?.methods.some((m) => m.prop === rainOpt.streets) ? rainOpt.streets : null
+	// the streets step: the chosen method's streets
 	const simProp = methods.find((m) => m.key === 'sim')?.prop ?? null
-	const s3Prop = key === 'coming' ? rainProp : simProp
+	// the last step: our simulation's streets, outside every official zone only
+	const s3Prop = simProp
+	const outsideOnly = key === 'coming'
 	useEffect(() => {
 		if (!map || !ready || !map.getLayer('g-s3-found')) return
-		for (const [id, f] of Object.entries(s3Filters(s3Prop))) map.setFilter(id, f as never)
-	}, [map, ready, s3Prop, streets])
+		for (const [id, f] of Object.entries(s3Filters(s3Prop))) map.setFilter(id, (outsideOnly && f !== NOTHING ? ['all', OUTSIDE, f] : f) as never)
+	}, [map, ready, s3Prop, streets, outsideOnly])
 
 	// step 2 opens with the flooded streets appearing outward from the ravines, about 4 s, then still
 	const playReveal = useCallback(() => {
@@ -532,6 +539,7 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 					water = depth
 				}
 			}
+			setPeek(false)
 			setPick({
 				name: streets.names[props.n] ?? 'Street',
 				town: streets.towns[props.t] ?? '',
@@ -647,7 +655,6 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 			step: (i: number) => go(i - 2),
 			screen: openScreen,
 			method: setMethod,
-			coming: setRainKey,
 			rain: setRainIdx,
 			reveal: () => void playReveal(),
 			ready: () => ready && !!map?.loaded(),
@@ -688,6 +695,65 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 	const n = streets?.numbers
 
 	// a tapped street: what the official map, our simulation and the records of the flood say there
+	// the sheet (phones): how far it lowers is the card's height less its title row (--peek, measured below)
+	useEffect(() => {
+		const card = cardRef.current
+		const title = titleRef.current
+		if (!card || !title) return
+		const measure = () => card.style.setProperty('--peek', `${title.offsetTop + title.offsetHeight + 12}px`)
+		measure()
+		const ro = new ResizeObserver(measure)
+		ro.observe(card)
+		ro.observe(title)
+		return () => ro.disconnect()
+	}, [key, at.extra])
+	useEffect(() => {
+		if (peek && cardRef.current) cardRef.current.scrollTop = 0
+	}, [peek])
+	const grabDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+		const card = cardRef.current
+		if (!card) return
+		const max = Math.max(0, card.offsetHeight - (Number.parseFloat(card.style.getPropertyValue('--peek')) || 0))
+		e.currentTarget.setPointerCapture(e.pointerId)
+		sheetDrag.current = { y0: e.clientY, base: peek ? max : 0, max, moved: false, last: e.clientY, lastT: performance.now(), vy: 0 }
+		card.dataset.dragging = ''
+	}
+	const grabMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+		const d = sheetDrag.current
+		const card = cardRef.current
+		if (!d || !card) return
+		const dy = e.clientY - d.y0
+		if (Math.abs(dy) > 5) d.moved = true
+		if (!d.moved) return
+		card.style.transform = `translateY(${Math.min(d.max, Math.max(0, d.base + dy))}px)`
+		const now = performance.now()
+		d.vy = (e.clientY - d.last) / Math.max(1, now - d.lastT)
+		d.last = e.clientY
+		d.lastT = now
+	}
+	const grabUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+		const d = sheetDrag.current
+		const card = cardRef.current
+		sheetDrag.current = null
+		if (!d || !card) return
+		delete card.dataset.dragging
+		if (!d.moved) return
+		// a fast swipe goes its way; a slow drag settles on the nearer end
+		const down = Math.abs(d.vy) > 0.45 ? d.vy > 0 : d.base + (e.clientY - d.y0) > d.max / 2
+		justDragged.current = true
+		if (down) card.dataset.peek = ''
+		else delete card.dataset.peek
+		card.style.transform = ''
+		setPeek(down)
+	}
+	const grabClick = () => {
+		if (justDragged.current) {
+			justDragged.current = false
+			return
+		}
+		setPeek((v) => !v)
+	}
+
 	const card = pick ? (
 		<div className="gd-pick" aria-live="polite">
 			<div className="gd-pick-head">
@@ -775,7 +841,7 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 								<i className="gd-sw" data-k="flooded" /> Flooded, not flagged
 							</li>
 							<li>
-								<i className="gd-sw" data-k="false" /> Flagged, stayed dry
+								<i className="gd-sw" data-k="false" /> Flagged, not in the official records
 							</li>
 						</>
 					) : (
@@ -835,29 +901,20 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 			</>
 		)
 	} else if (key === 'coming') {
+		const safe = coming?.safe
 		body = (
 			<>
-				<div className="gd-seg" role="radiogroup" aria-label="Which rain" data-n={rains.length} style={{ ['--n' as string]: Math.max(1, rains.length) }}>
-					{rains.map((o) => (
-						<button key={o.key} type="button" role="radio" aria-checked={o.key === rainOpt?.key} onClick={() => setRainKey(o.key)}>
-							{o.label}
-						</button>
-					))}
-				</div>
-				{rainOpt && (
-					<div className="gd-pair" data-n={rains.length}>
-						{rains.map((o) => (
-							<p key={o.key} data-on={o.key === rainOpt.key || undefined} data-arriving={o.status !== 'in' || undefined}>
-								{o.status === 'in' && o.found_pct !== null ? <b className="display">{pct(o.found_pct)}</b> : <b className="gd-arriving">Arriving</b>}
-								<span>of the flooded streets found {o.found_text}</span>
-							</p>
-						))}
-					</div>
+				{safe && (
+					<>
+						<div className="gd-num">
+							<b className="display">{Math.round(safe.found_km)} km</b>
+							<span>{safe.line}</span>
+						</div>
+						<p className="gd-small">
+							<b>{pct(safe.precision_pct)}</b> of its warnings there were right, where chance gives {pct(safe.chance_pct)}.
+						</p>
+					</>
 				)}
-				{rainOpt && rainOpt.status === 'in' && rainOpt.really_flooded_pct !== null && (
-					<p className="gd-small">{pct(rainOpt.really_flooded_pct)} of the streets it flagged really flooded.</p>
-				)}
-				{rainOpt && rainOpt.status !== 'in' && <p className="gd-small">This forecast run is still being simulated: its streets and numbers arrive here when it is done.</p>}
 				<ul className="gd-key">
 					<li>
 						<i className="gd-sw" data-k="hit" /> Flagged, and it flooded
@@ -866,11 +923,13 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 						<i className="gd-sw" data-k="flooded" /> Flooded, not flagged
 					</li>
 					<li>
-						<i className="gd-sw" data-k="false" /> Flagged, stayed dry
+						<i className="gd-sw" data-k="false" /> Flagged, not in the official records
+					</li>
+					<li>
+						<i className="gd-sw" data-k="zone" data-fill /> Official flood zone (SNCZI)
 					</li>
 				</ul>
-				{rainOpt && <p className="gd-note">{rainOpt.line}</p>}
-				{coming && <p className="gd-small">{coming.ceiling.text}</p>}
+				{safe && <p className="gd-note">{safe.small}</p>}
 				{coming && <p className="gd-close">{coming.closing}</p>}
 				<div className="gd-end">
 					<button type="button" className="gd-btn" onClick={restart}>
@@ -907,7 +966,7 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 						<i className="gd-sw" data-k="hit" data-fill /> Predicted, and it flooded{exam ? ` (${ha(exam.hectares.hit)} ha)` : ''}
 					</li>
 					<li>
-						<i className="gd-sw" data-k="false" data-fill /> Predicted, stayed dry{exam ? ` (${ha(exam.hectares.false_alarm)} ha)` : ''}
+						<i className="gd-sw" data-k="false" data-fill /> Predicted, not in the Copernicus map{exam ? ` (${ha(exam.hectares.false_alarm)} ha)` : ''}
 					</li>
 					<li>
 						<i className="gd-sw" data-k="missed" data-fill /> Flooded, we missed it{exam ? ` (${ha(exam.hectares.missed)} ha)` : ''}
@@ -958,10 +1017,7 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 		if (key === 'streets' && method && method.exact === false) src.push(`The streets drawn for ${sentence(method.label)} come from ${method.drawn_from}; the numbers are those of the scores.`)
 		if (streets) src.push(`Numbers: ${streets.sources.scores}.`)
 	}
-	if (key === 'coming' && coming) {
-		for (const o of coming.options) src.push(`${o.label}: ${o.source}.`)
-		src.push(`Two records: ${coming.ceiling.source}.`)
-	}
+	if (key === 'coming' && coming?.safe) src.push(`Where the map said safe: ${coming.safe.source}.`)
 	if (key === 'nisar') {
 		if (SWIPE_WATER === 'open') {
 			src.push('NISAR: NASA-ISRO L2 GCOV, track 066 D, open water by the team CV model (v1 at 0.3 on p(open water)).', 'Sentinel-1: OPERA DSWx-S1, open water (class 1).')
@@ -1015,7 +1071,18 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 				/>
 			</header>
 
-			<section ref={cardRef} className="gd-card" aria-live="polite">
+			<section ref={cardRef} className="gd-card" aria-live="polite" data-peek={peek || undefined}>
+				<button
+					type="button"
+					className="gd-grab"
+					aria-label={peek ? 'Show the card' : 'Lower the card'}
+					aria-expanded={!peek}
+					onPointerDown={grabDown}
+					onPointerMove={grabMove}
+					onPointerUp={grabUp}
+					onPointerCancel={grabUp}
+					onClick={grabClick}
+				/>
 				{at.extra ? (
 					<p className="gd-aside">Marsh model, out of the guided tour</p>
 				) : (
@@ -1030,7 +1097,7 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 				<p className="gd-when">
 					{s.when} · {s.where}
 				</p>
-				<h1 className="display gd-title">{key === 'streets' ? (STREET_TITLES[method?.key ?? 'zones'] ?? s.title) : s.title}</h1>
+				<h1 ref={titleRef} className="display gd-title">{key === 'streets' ? (STREET_TITLES[method?.key ?? 'zones'] ?? s.title) : s.title}</h1>
 				<div className="gd-body" key={key}>
 					{body}
 				</div>
@@ -1054,6 +1121,26 @@ export function GuidedApp({ onAllLayers }: { onAllLayers: () => void }) {
 				)}
 				{error && <p className="gd-error">Some layers did not load: {error}</p>}
 			</section>
+			{/* a phone: Back, Sources and Next on a bar under the sheet, seen whether it is open or lowered */}
+			<nav className="gd-bar" aria-label="Steps">
+				<button type="button" onClick={back} disabled={!at.extra && step === 0}>
+					<ArrowLeft size={15} strokeWidth={2.4} /> {at.extra === 'exam' ? 'All layers' : 'Back'}
+				</button>
+				<button
+					type="button"
+					className="gd-src"
+					aria-expanded={sources}
+					onClick={() => {
+						setPeek(false)
+						setSources((v) => !v)
+					}}
+				>
+					Sources
+				</button>
+				<button type="button" onClick={next} disabled={lastNext}>
+					Next <ArrowRight size={15} strokeWidth={2.4} />
+				</button>
+			</nav>
 		</div>
 	)
 }

@@ -168,6 +168,8 @@
 .gd-pair b {
 	font-size: 52px;
 	line-height: 0.9;
+	/* a unit stays as written ("205 km", not "205 KM") */
+	text-transform: none;
 	color: var(--deep);
 	font-variant-numeric: tabular-nums;
 }
@@ -494,6 +496,12 @@
 	border: 1px solid var(--line-strong);
 }
 
+/* a phone's sheet: the grabber and the bar of Back, Sources and Next (hidden on a wide screen) */
+.gd-grab,
+.gd-bar {
+	display: none;
+}
+
 /* Back, Sources, Next: quiet */
 .gd-nav {
 	display: flex;
@@ -677,15 +685,89 @@
 	.gd-swipe[data-edge="right"] .gd-swipe-label[data-side="right"] {
 		opacity: 0;
 	}
-	/* a tapped street or the last step makes the card scroll: Back, Sources and Next stay at its foot */
-	.gd-nav {
+	/* the card as a bottom sheet over its bar: open, or lowered to its title row by the grabber (a drag, a swipe or
+	   a tap), moved by transform only, clear of the home bar */
+	.gd-card {
+		bottom: calc(var(--pad) + env(safe-area-inset-bottom, 0px) + 48px);
+		max-height: calc(54dvh - 48px);
+		padding-top: 0;
+		border-bottom: 0;
+		border-radius: 20px 20px 0 0;
+		transition: transform 0.34s var(--ease);
+		will-change: transform;
+	}
+	/* lowered: only the title row is left above the bar (the rest is clipped, so nothing shows behind or under it) */
+	.gd-card[data-peek] {
+		overflow: hidden;
+		transform: translateY(calc(100% - var(--peek, 120px)));
+		clip-path: inset(0 0 calc(100% - var(--peek, 120px)) 0 round 20px 20px 0 0);
+	}
+	.gd-card[data-dragging] {
+		transition: none;
+		clip-path: none;
+	}
+	.gd-card .gd-nav {
+		display: none;
+	}
+	.gd-grab {
 		position: sticky;
-		bottom: -8px;
-		z-index: 2;
-		margin: 12px -15px -8px;
-		padding: 8px 15px;
+		z-index: 3;
+		top: 0;
+		display: block;
+		width: calc(100% + 30px);
+		height: 26px;
+		margin: 0 -15px 2px;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		cursor: grab;
+		touch-action: none;
+	}
+	.gd-grab::before {
+		content: "";
+		display: block;
+		width: 40px;
+		height: 5px;
+		margin: 9px auto 0;
+		border-radius: 3px;
+		background: var(--line-strong);
+	}
+	.gd-bar {
+		position: absolute;
+		z-index: 5;
+		left: var(--pad);
+		right: var(--pad);
+		bottom: calc(var(--pad) + env(safe-area-inset-bottom, 0px));
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		height: 48px;
+		padding: 0 9px;
+		border: 1px solid var(--glass-line);
+		border-top-color: var(--line);
 		border-radius: 0 0 20px 20px;
-		background: color-mix(in oklab, var(--bg) 97%, transparent);
+		background: var(--bg);
+		box-shadow: var(--shadow);
+	}
+	.gd-bar button {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		min-height: 40px;
+		padding: 7px 6px;
+		border: 0;
+		background: none;
+		color: var(--ink-2);
+		font-size: 13.5px;
+		font-weight: 700;
+	}
+	.gd-bar button:disabled {
+		opacity: 0.3;
+	}
+	.gd-bar .gd-src {
+		font-weight: 600;
+		color: var(--muted);
 	}
 	.gd .maplibregl-ctrl-bottom-right {
 		bottom: auto;
@@ -697,6 +779,10 @@
 	.gd-pick,
 	.gd-hint i {
 		animation: none;
+	}
+	/* the phone's sheet jumps between open and lowered instead of sliding */
+	.gd-card {
+		transition: none;
 	}
 }
 
