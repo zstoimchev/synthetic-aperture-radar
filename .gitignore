@@ -32,3 +32,4 @@ Thumbs.db
 
 # Trained ML models: about 8 MB each, rebuilt in 2 minutes by python -m pipeline.ml run
 data/ml/*/model.txt
+.vercel
