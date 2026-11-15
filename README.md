@@ -158,3 +158,4 @@ To be decided by the team. It will be an open-source license, as the challenge r
 ## Acknowledgements
 
 NISAR is a joint mission of NASA and ISRO. Data courtesy of NASA's Alaska Satellite Facility DAAC, NASA JPL OPERA, the Copernicus programme and the USGS. This project is not endorsed by NASA.
+ 
