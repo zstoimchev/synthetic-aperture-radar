@@ -1,3 +1,5 @@
+> _**NOTE**: This repository was originally forked from [ilijachrchev/synthetic-aperture-radar](https://github.com/ilijachrchev/synthetic-aperture-radar), but was later detached due to a change in the original repository's visibility..._
+
 <div align="center">
 
 # synthetic-aperture-radar
